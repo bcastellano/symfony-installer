@@ -4,7 +4,9 @@ namespace Symfony\Installer;
 
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Installer\Exception\AbortException;
 
 /**
@@ -14,6 +16,16 @@ use Symfony\Installer\Exception\AbortException;
  */
 class CreateCommand extends NewCommand
 {
+    /**
+     * @var array List name of apps
+     */
+    protected $apps;
+
+    /**
+     * @var string core bundle name
+     */
+    protected $coreBundleName;
+
     protected function configure()
     {
         $this
@@ -21,12 +33,33 @@ class CreateCommand extends NewCommand
             ->setDescription('Creates a new Symfony project.')
             ->addArgument('directory', InputArgument::REQUIRED, 'Directory where the new project will be created.')
             ->addArgument('version', InputArgument::OPTIONAL, 'The Symfony version to be installed (defaults to the latest stable version).', 'latest')
+
+            ->addOption('multiple-apps', 'm', InputOption::VALUE_REQUIRED, 'If this symfony installation will have more than one application')
         ;
     }
 
     protected function initialize(InputInterface $input, OutputInterface $output)
     {
         parent::initialize($input, $output);
+
+        $question = $this->getHelper('question');
+
+        // ask for multiple apps
+        if ($numberApps = (int)$input->getOption('multiple-apps')) {
+            $this->apps = [];
+            do {
+                $appName = strtolower(trim($question->ask($input, $output, new Question("<question>Set name for app #".(count($this->apps)+1)."?</question>: "))));
+
+                if (!empty($appName)) {
+                    $this->apps[$appName] = $appName;
+                }
+            }
+            while (count($this->apps) < $numberApps);
+
+            // set core bundle name
+            $this->coreBundleName = trim($question->ask($input, $output, new Question('<question>Enter the name of the main shared bundle</question> (CoreBundle):', 'CoreBundle')));
+            $this->coreBundleName = str_replace('bundle', '', strtolower($this->coreBundleName));
+        }
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -45,6 +78,9 @@ class CreateCommand extends NewCommand
                 ->updateComposerJson()
                 ->createGitIgnore()
                 ->checkSymfonyRequirements()
+
+                ->multipleApps()
+
                 ->displayInstallationResult()
             ;
         } catch (AbortException $e) {
@@ -65,6 +101,92 @@ class CreateCommand extends NewCommand
             $this->cleanUp();
             throw $e;
         }
+    }
+
+    protected function multipleApps()
+    {
+        if (!$this->apps) {
+            return $this;
+        }
+
+        $this->renameOriginalFiles();
+        $this->createBundle($this->coreBundleName);
+        foreach ($this->apps as $app) {
+            $this->createApp($app);
+            $this->createBundle($app);
+            $this->createConsole($app);
+            $this->createCacheAndLog($app);
+            $this->createPublicDir($app);
+        }
+
+        $this->removeOriginalDirs();
+
+        return $this;
+    }
+
+    protected function renameOriginalFiles()
+    {
+        $this->fs->rename(
+            $this->projectDir . "/web",
+            $this->projectDir . "/web_original");
+    }
+
+    protected function createApp($app)
+    {
+        $this->fs->mirror(
+            $this->projectDir . "/app",
+            $this->projectDir . "/apps/$app");
+    }
+
+    protected function createBundle($app)
+    {
+        $this->fs->mirror(
+            $this->projectDir . "/src/AppBundle",
+            $this->projectDir . "/src/" . ucfirst($app) . "Bundle");
+    }
+
+    protected function createConsole($app)
+    {
+        if ($this->isSymfony3()) {
+            $this->fs->copy(
+                $this->projectDir . "/bin/console",
+                $this->projectDir . "/bin/$app/console");
+        }
+    }
+
+    protected function createCacheAndLog($app)
+    {
+        if ($this->isSymfony3()) {
+            $this->fs->mirror(
+                $this->projectDir . "/var/cache",
+                $this->projectDir . "/var/$app/cache");
+            $this->fs->mirror(
+                $this->projectDir . "/var/logs",
+                $this->projectDir . "/var/$app/logs");
+            $this->fs->mirror(
+                $this->projectDir . "/var/sessions",
+                $this->projectDir . "/var/$app/sessions");
+        }
+    }
+
+    protected function createPublicDir($app)
+    {
+        $this->fs->mirror(
+            $this->projectDir . "/web_original",
+            $this->projectDir . "/web/$app");
+    }
+
+    protected function removeOriginalDirs()
+    {
+        $this->fs->remove([
+            $this->projectDir . "/app",
+            $this->projectDir . "/src/AppBundle",
+            $this->projectDir . "/bin/console",
+            $this->projectDir . "/var/cache",
+            $this->projectDir . "/var/logs",
+            $this->projectDir . "/var/sessions",
+            $this->projectDir . "/web_original"
+        ]);
     }
 
     /**
