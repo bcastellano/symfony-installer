@@ -62,6 +62,16 @@ class CreateCommand extends NewCommand
         }
     }
 
+    /**
+     * Checks in this installation is multiple app
+     *
+     * @return bool
+     */
+    protected function isMultipleApp()
+    {
+        return $this->apps != null;
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         try {
@@ -103,14 +113,19 @@ class CreateCommand extends NewCommand
         }
     }
 
+    /**
+     * Modify standard installation to create multiple app structure
+     *
+     * @return $this
+     */
     protected function multipleApps()
     {
-        if (!$this->apps) {
+        if (!$this->isMultipleApp()) {
             return $this;
         }
 
         $this->renameOriginalFiles();
-        $this->createBundle($this->coreBundleName);
+        $this->createCommon($this->coreBundleName);
         foreach ($this->apps as $app) {
             $this->createApp($app);
             $this->createBundle($app);
@@ -129,6 +144,23 @@ class CreateCommand extends NewCommand
         $this->fs->rename(
             $this->projectDir . "/web",
             $this->projectDir . "/web_original");
+    }
+
+    protected function createCommon($coreBundle)
+    {
+        $this->createBundle($coreBundle);
+
+        $this->fs->copy(
+            $this->projectDir . "/app/config/config.yml",
+            $this->projectDir . "/apps/$coreBundle/config/config.yml");
+
+        $this->fs->copy(
+            $this->projectDir . "/app/config/parameters.yml.dist",
+            $this->projectDir . "/apps/$coreBundle/config/parameters.yml.dist");
+
+        $this->fs->copy(
+            $this->projectDir . "/app/config/parameters.yml",
+            $this->projectDir . "/apps/$coreBundle/config/parameters.yml");
     }
 
     protected function createApp($app)
@@ -197,6 +229,8 @@ class CreateCommand extends NewCommand
      */
     protected function displayInstallationResult()
     {
+        $appDir = ($this->isMultipleApp() ? 'apps/'.implode('|', $this->apps) : 'app');
+
         if (empty($this->requirementsErrors)) {
             $this->output->writeln(sprintf(
                 " <info>%s</info>  Symfony %s was <info>successfully installed</info>. Now you can:\n",
@@ -216,7 +250,7 @@ class CreateCommand extends NewCommand
                 $this->output->writeln(' * '.$helpText);
             }
 
-            $checkFile = $this->isSymfony3() ? 'bin/symfony_requirements' : 'app/check.php';
+            $checkFile = $this->isSymfony3() ? 'bin/symfony_requirements' : $appDir . "/check.php";
 
             $this->output->writeln(sprintf(
                 " After fixing these issues, re-check Symfony requirements executing this command:\n\n".
@@ -232,10 +266,10 @@ class CreateCommand extends NewCommand
             ));
         }
 
-        $consoleDir = ($this->isSymfony3() ? 'bin' : 'app');
+        $consoleDir = ($this->isSymfony3() ? 'bin' : $appDir);
 
         $this->output->writeln(sprintf(
-            "    * Configure your application in <comment>app/config/parameters.yml</comment> file.\n\n".
+            "    * Configure your application in <comment>$appDir/config/parameters.yml</comment> file.\n\n".
             "    * Run your application:\n".
             "        1. Execute the <comment>php %s/console server:run</comment> command.\n".
             "        2. Browse to the <comment>http://localhost:8000</comment> URL.\n\n".
