@@ -50,6 +50,10 @@ class NewMultiAppCommand extends NewCommand
         do {
             $appName = strtolower(trim($question->ask($input, $output, new Question("<question>Set name for app #".(count($this->apps)+1)."?</question>: "))));
 
+            if ($input->getOption('no-interaction') && !$appName) {
+                $appName = 'app'.(count($this->apps)+1);
+            }
+
             if (!empty($appName)) {
                 $this->apps[$appName] = $appName;
             }
