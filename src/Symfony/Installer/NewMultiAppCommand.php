@@ -72,14 +72,14 @@ class NewMultiAppCommand extends NewCommand
                 ->download()
                 ->extract()
                 ->cleanUp()
-                ->dumpReadmeFile()
-                ->updateParameters()
-                ->updateComposerJson()
-                ->createGitIgnore()
                 ->checkSymfonyRequirements()
 
                 ->multipleApps()
 
+                ->dumpReadmeFile()
+                ->updateParameters()
+                ->updateComposerJson()
+                ->createGitIgnore()
                 ->displayInstallationResult()
             ;
         } catch (AbortException $e) {
@@ -100,6 +100,109 @@ class NewMultiAppCommand extends NewCommand
             $this->cleanUp();
             throw $e;
         }
+    }
+
+    /**
+     * Dump a basic README.md file.
+     *
+     * @return $this
+     */
+    protected function dumpReadmeFile()
+    {
+        $readmeContents = sprintf("%s\n%s\n\nA Symfony multi-project created on %s.\n", $this->projectName, str_repeat('=', strlen($this->projectName)), date('F j, Y, g:i a'));
+        try {
+            $this->fs->dumpFile($this->projectDir.'/README.md', $readmeContents);
+        } catch (\Exception $e) {
+            // don't throw an exception in case the file could not be created,
+            // because this is just an enhancement, not something mandatory
+            // for the project
+        }
+
+        return $this;
+    }
+
+    /**
+     * Updates the Symfony parameters.yml file to replace default configuration
+     * values with better generated values.
+     *
+     * @return $this
+     */
+    protected function updateParameters()
+    {
+        foreach ($this->apps as $app) {
+            $filename = "{$this->projectDir}/apps/$app/config/parameters.yml";
+
+            if (!is_writable($filename)) {
+                if ($this->output->isVerbose()) {
+                    $this->output->writeln(sprintf(
+                        " <comment>[WARNING]</comment> The value of the <info>secret</info> configuration option cannot be updated because\n".
+                        " the <comment>%s</comment> file is not writable.\n",
+                        $filename
+                    ));
+                }
+
+                return $this;
+            }
+
+            $ret = str_replace('ThisTokenIsNotSoSecretChangeIt', $this->generateRandomSecret(), file_get_contents($filename));
+            file_put_contents($filename, $ret);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Updates the composer.json file to provide better values for some of the
+     * default configuration values.
+     *
+     * @return $this
+     */
+    protected function updateComposerJson()
+    {
+        $filename = $this->projectDir.'/composer.json';
+
+        if (!is_writable($filename)) {
+            if ($this->output->isVerbose()) {
+                $this->output->writeln(sprintf(
+                    " <comment>[WARNING]</comment> Project name cannot be configured because\n".
+                    " the <comment>%s</comment> file is not writable.\n",
+                    $filename
+                ));
+            }
+
+            return $this;
+        }
+
+        $contents = json_decode(file_get_contents($filename), true);
+
+        // TODO do stuff
+
+        file_put_contents($filename, json_encode($contents, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
+
+        parent::updateComposerJson();
+
+        return $this;
+    }
+
+    /**
+     * Append resource to .gitignore file
+     *
+     * @override
+     * @return $this
+     */
+    protected function createGitIgnore()
+    {
+        parent::createGitIgnore();
+
+        $path = $this->projectDir.'/.gitignore';
+
+        $content = file_get_contents($path);
+
+        // TODO append to $content
+
+        $this->fs->dumpFile($path, $content);
+
+        return $this;
     }
 
     /**
@@ -210,7 +313,7 @@ class NewMultiAppCommand extends NewCommand
      * It displays the message with the result of installing Symfony
      * and provides some pointers to the user.
      *
-     * @return NewCommand
+     * @return $this
      */
     protected function displayInstallationResult()
     {
