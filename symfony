@@ -30,7 +30,7 @@ $app->add(new Symfony\Installer\AboutCommand($appVersion));
 $app->add(new Symfony\Installer\NewCommand());
 $app->add(new Symfony\Installer\DemoCommand());
 $app->add(new Symfony\Installer\SelfUpdateCommand());
-$app->add(new Symfony\Installer\CreateCommand());
+$app->add(new Symfony\Installer\NewMultiAppCommand());
 
 $app->setDefaultCommand('about');
 

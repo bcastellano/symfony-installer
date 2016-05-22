@@ -14,7 +14,7 @@ use Symfony\Installer\Exception\AbortException;
  *
  * @author Blas Castellano Moreno <b.castellano.moreno@gmail.com>
  */
-class CreateCommand extends NewCommand
+class NewMultiAppCommand extends NewCommand
 {
     /**
      * @var array List name of apps
@@ -29,12 +29,12 @@ class CreateCommand extends NewCommand
     protected function configure()
     {
         $this
-            ->setName('create')
-            ->setDescription('Creates a new Symfony project.')
+            ->setName('new:multi-app')
+            ->setDescription('Creates a new Symfony project with multiple application.')
             ->addArgument('directory', InputArgument::REQUIRED, 'Directory where the new project will be created.')
             ->addArgument('version', InputArgument::OPTIONAL, 'The Symfony version to be installed (defaults to the latest stable version).', 'latest')
 
-            ->addOption('multiple-apps', 'm', InputOption::VALUE_REQUIRED, 'If this symfony installation will have more than one application')
+            ->addOption('apps', 'a', InputOption::VALUE_REQUIRED, 'Number of applications', 2)
         ;
     }
 
@@ -45,31 +45,20 @@ class CreateCommand extends NewCommand
         $question = $this->getHelper('question');
 
         // ask for multiple apps
-        if ($numberApps = (int)$input->getOption('multiple-apps')) {
-            $this->apps = [];
-            do {
-                $appName = strtolower(trim($question->ask($input, $output, new Question("<question>Set name for app #".(count($this->apps)+1)."?</question>: "))));
+        $numberApps = (int)$input->getOption('apps');
+        $this->apps = [];
+        do {
+            $appName = strtolower(trim($question->ask($input, $output, new Question("<question>Set name for app #".(count($this->apps)+1)."?</question>: "))));
 
-                if (!empty($appName)) {
-                    $this->apps[$appName] = $appName;
-                }
+            if (!empty($appName)) {
+                $this->apps[$appName] = $appName;
             }
-            while (count($this->apps) < $numberApps);
-
-            // set core bundle name
-            $this->coreBundleName = trim($question->ask($input, $output, new Question('<question>Enter the name of the main shared bundle</question> (CoreBundle):', 'CoreBundle')));
-            $this->coreBundleName = str_replace('bundle', '', strtolower($this->coreBundleName));
         }
-    }
+        while (count($this->apps) < $numberApps);
 
-    /**
-     * Checks in this installation is multiple app
-     *
-     * @return bool
-     */
-    protected function isMultipleApp()
-    {
-        return $this->apps != null;
+        // set core bundle name
+        $this->coreBundleName = trim($question->ask($input, $output, new Question('<question>Enter the name of the main shared bundle</question> (CoreBundle):', 'CoreBundle')));
+        $this->coreBundleName = str_replace('bundle', '', strtolower($this->coreBundleName));
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -120,10 +109,6 @@ class CreateCommand extends NewCommand
      */
     protected function multipleApps()
     {
-        if (!$this->isMultipleApp()) {
-            return $this;
-        }
-
         $this->renameOriginalFiles();
         $this->createCommon($this->coreBundleName);
         foreach ($this->apps as $app) {
@@ -229,7 +214,7 @@ class CreateCommand extends NewCommand
      */
     protected function displayInstallationResult()
     {
-        $appDir = ($this->isMultipleApp() ? 'apps/'.implode('|', $this->apps) : 'app');
+        $appDir = 'apps/'.implode('|', $this->apps);
 
         if (empty($this->requirementsErrors)) {
             $this->output->writeln(sprintf(
