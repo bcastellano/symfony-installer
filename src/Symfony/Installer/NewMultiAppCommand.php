@@ -109,6 +109,7 @@ class NewMultiAppCommand extends NewCommand
     /**
      * Dump a basic README.md file.
      *
+     * @override
      * @return $this
      */
     protected function dumpReadmeFile()
@@ -129,6 +130,7 @@ class NewMultiAppCommand extends NewCommand
      * Updates the Symfony parameters.yml file to replace default configuration
      * values with better generated values.
      *
+     * @override
      * @return $this
      */
     protected function updateParameters()
@@ -159,6 +161,7 @@ class NewMultiAppCommand extends NewCommand
      * Updates the composer.json file to provide better values for some of the
      * default configuration values.
      *
+     * @override
      * @return $this
      */
     protected function updateComposerJson()
@@ -179,10 +182,31 @@ class NewMultiAppCommand extends NewCommand
 
         $contents = json_decode(file_get_contents($filename), true);
 
-        // TODO do stuff
+        // update parameters files
+        unset($contents["autoload"]["classmap"]);
+        $contents['extra']['incenteev-parameters'] = [
+            ['file' => "apps/{$this->coreBundleName}/config/parameters.yml"]
+        ];
 
+        foreach ($this->apps as $app) {
+            // add param for each app
+            $contents['extra']['incenteev-parameters'][] = ['file' => "apps/$app/config/parameters.yml"];
+        }
+
+        // update app and web dirs
+        $contents['extra']['symfony-app-dir'] = "apps/$app";
+        $contents['extra']['symfony-web-dir'] = "web/$app";
+        if (isset($contents['extra']['symfony-bin-dir'])) {
+            $contents['extra']['symfony-bin-dir'] = "bin/$app";
+        }
+        if (isset($contents['extra']['symfony-var-dir'])) {
+            $contents['extra']['symfony-var-dir'] = "var/$app";
+        }
+
+        // save composer.json
         file_put_contents($filename, json_encode($contents, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
 
+        // call parent to modify composer.json and update composer.lock
         parent::updateComposerJson();
 
         return $this;
@@ -210,6 +234,77 @@ class NewMultiAppCommand extends NewCommand
     }
 
     /**
+     * Insert lines in text file after, in same place or before a specified line
+     *
+     * @param string $file File to insert in
+     * @param string $line Line to find
+     * @param int $position Position to insert lines. -1 before, 0 same line (and replace) or 1 to insert after
+     * @param array $newLines
+     */
+    private function insertLinesIn($file, $line, $position, array $newLines)
+    {
+        $contents = explode("\n", file_get_contents($file));
+        foreach ($contents as  $pos=>$l) {
+            if ($l == $line) {
+
+                $length = 0;
+                $insertPos = $pos;
+                if ($position == 0) {
+                    $length = 1;
+                }
+                elseif ($position < 0) {
+                    $insertPos--;
+                }
+                else {
+                    $insertPos++;
+                }
+
+                array_splice($contents, $insertPos, $length, $newLines);
+
+                break;
+            }
+        }
+
+        $this->fs->dumpFile($file, implode("\n", $contents));
+    }
+
+    /**
+     * Replace file lines by it position
+     *
+     * @param string $file File to modify
+     * @param int $offset Line index to start
+     * @param int $length Number of lines to replace
+     * @param array $newLines
+     */
+    private function replaceLines($file, $offset, $length, array $newLines)
+    {
+        $contents = explode("\n", file_get_contents($file));
+        array_splice($contents, $offset, $length, $newLines);
+        $this->fs->dumpFile($file, implode("\n", $contents));
+    }
+
+    /**
+     * Replace patterns and replace by text in files
+     *
+     * @param mixed $files Array (with file names) or string file name
+     * @param mixed $pattern
+     * @param mixed $replacement
+     */
+    private function replaceInFiles($files, $pattern, $replacement)
+    {
+        if (is_string($files)) {
+            $files = [$files];
+        }
+
+        foreach ($files as $file) {
+            $contents = file_get_contents($file);
+            $contents = preg_replace($pattern, $replacement, $contents);
+
+            $this->fs->dumpFile($file, $contents);
+        }
+    }
+
+    /**
      * Modify standard installation to create multiple app structure
      *
      * @return $this
@@ -231,6 +326,9 @@ class NewMultiAppCommand extends NewCommand
         return $this;
     }
 
+    /**
+     * Rename temporally dirs to copy before delete it
+     */
     protected function renameOriginalFiles()
     {
         $this->fs->rename(
@@ -238,6 +336,11 @@ class NewMultiAppCommand extends NewCommand
             $this->projectDir . "/web_original");
     }
 
+    /**
+     * Create common app resources
+     *
+     * @param string $coreBundle Core bundle name
+     */
     protected function createCommon($coreBundle)
     {
         $this->createBundle($coreBundle);
@@ -253,31 +356,132 @@ class NewMultiAppCommand extends NewCommand
         $this->fs->copy(
             $this->projectDir . "/app/config/parameters.yml",
             $this->projectDir . "/apps/$coreBundle/config/parameters.yml");
+
+        // delete first import for common config
+        $this->replaceLines($this->projectDir . "/apps/$coreBundle/config/config.yml", 0, 4, []);
     }
 
+    /**
+     * Create app (kernel root dir) resources
+     *
+     * @param string $app App name
+     */
     protected function createApp($app)
     {
+        // copy dir
         $this->fs->mirror(
             $this->projectDir . "/app",
             $this->projectDir . "/apps/$app");
+
+
+        $appKernel = ucfirst($app) . "Kernel";
+        $appCache = ucfirst($app) . "Cache";
+        $bundleName = ucfirst($app)."Bundle";
+
+        // rename kernel files
+        $this->fs->rename(
+            $this->projectDir . "/apps/$app/AppKernel.php",
+            $this->projectDir . "/apps/$app/$appKernel.php");
+        $this->fs->rename(
+            $this->projectDir . "/apps/$app/AppCache.php",
+            $this->projectDir . "/apps/$app/$appCache.php");
+
+        // modify kernel and cache files
+        $this->replaceInFiles([
+                $this->projectDir . "/apps/$app/$appKernel.php",
+                $this->projectDir . "/apps/$app/$appCache.php"
+            ],
+            ["/AppBundle/", "/AppKernel/", "/AppCache/"],
+            [$bundleName, $appKernel, $appCache]);
+
+        if ($this->isSymfony3()) {
+            $this->replaceInFiles([$this->projectDir . "/apps/$app/$appKernel.php"],
+                ["/\\/var\\//"],
+                ["/../var/$app/"]);
+        } else {
+            $this->replaceLines($this->projectDir . "/apps/$app/$appKernel.php", -2, 0, [
+                '    public function getCacheDir()',
+                '    {',
+                '        return $this->getRootDir()."/../../var/'.$app.'/cache/".$this->environment;',
+                '    }',
+                '',
+                '    public function getLogDir()',
+                '    {',
+                '        return $this->getRootDir()."/../../var/'.$app.'/logs";',
+                '    }',
+            ]);
+        }
+
+        // modify autoload.php
+        $this->replaceInFiles($this->projectDir . "/apps/$app/autoload.php", "/\\.\\.\\/vendor/", "../../vendor");
+
+        // modify routing.yml
+        $this->replaceInFiles($this->projectDir . "/apps/$app/config/routing.yml", "/@AppBundle/", "@$bundleName");
+
+        // modify config yml
+        $this->replaceLines($this->projectDir . "/apps/$app/config/config.yml", 1, 1, [
+            "    - { resource: ../../{$this->coreBundleName}/config/parameters.yml }",
+            "    - { resource: parameters.yml }",
+            "    - { resource: ../../{$this->coreBundleName}/config/config.yml }",
+        ]);
     }
 
+    /**
+     * Create bundle for app
+     *
+     * @param string $app App name
+     */
     protected function createBundle($app)
     {
+        $bundleName = ucfirst($app) . "Bundle";
+
         $this->fs->mirror(
             $this->projectDir . "/src/AppBundle",
-            $this->projectDir . "/src/" . ucfirst($app) . "Bundle");
+            $this->projectDir . "/src/$bundleName");
+
+        $this->fs->rename(
+            $this->projectDir . "/src/$bundleName/AppBundle.php",
+            $this->projectDir . "/src/$bundleName/$bundleName.php");
+
+        $this->replaceInFiles([
+            $this->projectDir . "/src/$bundleName/$bundleName.php",
+            $this->projectDir . "/src/$bundleName/Controller/DefaultController.php"
+        ], "/AppBundle/", "$bundleName");
     }
 
+    /**
+     * Create console related resources
+     *
+     * @param string $app App name
+     */
     protected function createConsole($app)
     {
         if ($this->isSymfony3()) {
             $this->fs->copy(
                 $this->projectDir . "/bin/console",
-                $this->projectDir . "/bin/$app/console");
+                $this->projectDir . "/bin/$app");
+
+            $appKernel = ucfirst($app) . "Kernel";
+
+            $this->replaceInFiles([
+                    $this->projectDir . "/bin/$app"
+                ],
+                ["/AppKernel/", "/\\/app\\//"],
+                [$appKernel, "/apps/$app/"]);
+
+            // insert require kernel file
+            $this->insertLinesIn($this->projectDir . "/bin/$app", "\$kernel = new $appKernel(\$env, \$debug);", -1, [
+                "",
+                "require_once __DIR__.'/../apps/$app/$appKernel.php';"
+            ]);
         }
     }
 
+    /**
+     * Create cache and log dirs
+     *
+     * @param string $app App name
+     */
     protected function createCacheAndLog($app)
     {
         if ($this->isSymfony3()) {
@@ -293,13 +497,46 @@ class NewMultiAppCommand extends NewCommand
         }
     }
 
+    /**
+     * Create public dir
+     *
+     * @param string $app App name
+     */
     protected function createPublicDir($app)
     {
         $this->fs->mirror(
             $this->projectDir . "/web_original",
             $this->projectDir . "/web/$app");
+
+        $appKernel = ucfirst($app) . "Kernel";
+        $appCache = ucfirst($app) . "Cache";
+        $bundleName = ucfirst($app)."Bundle";
+
+        $this->replaceInFiles([
+                $this->projectDir . "/web/$app/app.php",
+                $this->projectDir . "/web/$app/app_dev.php"
+            ],
+            ["/AppBundle/", "/AppKernel/", "/AppCache/", "/\\/app\\//", "/\\/var\\//"],
+            [$bundleName, $appKernel, $appCache, "/../apps/$app/", "/../var/$app/"]);
+
+        if ($this->isSymfony3()) {
+            // insert require kernel file
+            $this->insertLinesIn($this->projectDir . "/web/$app/app.php", "\$kernel = new $appKernel('prod', false);", -1, [
+                "",
+                "require_once __DIR__.'/../../apps/$app/$appKernel.php';"
+            ]);
+
+            // insert require kernel file
+            $this->insertLinesIn($this->projectDir . "/web/$app/app_dev.php", "\$kernel = new $appKernel('dev', true);", -1, [
+                "",
+                "require_once __DIR__.'/../../apps/$app/$appKernel.php';"
+            ]);
+        }
     }
 
+    /**
+     * Remove original single app dirs
+     */
     protected function removeOriginalDirs()
     {
         $this->fs->remove([
@@ -321,7 +558,7 @@ class NewMultiAppCommand extends NewCommand
      */
     protected function displayInstallationResult()
     {
-        $appDir = 'apps/'.implode('|', $this->apps);
+        $appDir = 'apps/{app_name}';
 
         if (empty($this->requirementsErrors)) {
             $this->output->writeln(sprintf(
@@ -352,21 +589,29 @@ class NewMultiAppCommand extends NewCommand
             ));
         }
 
+        $this->output->writeln("    * Applications installed:");
+        $pos = 1;
+        foreach ($this->apps as $app) {
+            $this->output->writeln(sprintf("        %s. Name: <comment>%s</comment>", $pos, $app));
+            $pos++;
+        }
+        $this->output->writeln('');
+
         if ('.' !== $this->projectDir) {
             $this->output->writeln(sprintf(
                 "    * Change your current directory to <comment>%s</comment>\n", $this->projectDir
             ));
         }
 
-        $consoleDir = ($this->isSymfony3() ? 'bin' : $appDir);
+        $console = ($this->isSymfony3() ? "bin/$app" : "$appDir/console");
 
         $this->output->writeln(sprintf(
             "    * Configure your application in <comment>$appDir/config/parameters.yml</comment> file.\n\n".
             "    * Run your application:\n".
-            "        1. Execute the <comment>php %s/console server:run</comment> command.\n".
+            "        1. Execute the <comment>php %s server:run --docroot web/{app_name}</comment> command.\n".
             "        2. Browse to the <comment>http://localhost:8000</comment> URL.\n\n".
             "    * Read the documentation at <comment>http://symfony.com/doc</comment>\n",
-            $consoleDir
+            $console
         ));
 
         return $this;
