@@ -188,20 +188,36 @@ class NewMultiAppCommand extends NewCommand
             ['file' => "apps/{$this->coreBundleName}/config/parameters.yml"]
         ];
 
+        // create command list for composer events
+        $commands = [];
+
         foreach ($this->apps as $app) {
             // add param for each app
             $contents['extra']['incenteev-parameters'][] = ['file' => "apps/$app/config/parameters.yml"];
+
+            $commands[] = "php bin/$app cache:clear --ansi";
+            $commands[] = "php bin/$app assets:install web/$app --ansi";
         }
 
+        // create command list for composer events
+        $commands = array_merge([
+            "Incenteev\\ParameterHandler\\ScriptHandler::buildParameters",
+            "php vendor/sensio/distribution-bundle/Resources/bin/build_bootstrap.php var apps/$app --use-new-directory-structure"
+        ], $commands);
+
+        // and command list to composer events
+        $contents['scripts']['post-install-cmd'] = $commands;
+        $contents['scripts']['post-update-cmd'] = $commands;
+
         // update app and web dirs
-        $contents['extra']['symfony-app-dir'] = "apps/$app";
-        $contents['extra']['symfony-web-dir'] = "web/$app";
-        if (isset($contents['extra']['symfony-bin-dir'])) {
-            $contents['extra']['symfony-bin-dir'] = "bin/$app";
-        }
-        if (isset($contents['extra']['symfony-var-dir'])) {
-            $contents['extra']['symfony-var-dir'] = "var/$app";
-        }
+        unset(
+            $contents['extra']['symfony-app-dir'],
+            $contents['extra']['symfony-web-dir'],
+            $contents['extra']['symfony-bin-dir'],
+            $contents['extra']['symfony-var-dir'],
+            $contents['extra']['symfony-tests-dir'],
+            $contents['extra']['symfony-assets-install']
+        );
 
         // save composer.json
         file_put_contents($filename, json_encode($contents, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
@@ -417,6 +433,9 @@ class NewMultiAppCommand extends NewCommand
 
         // modify routing.yml
         $this->replaceInFiles($this->projectDir . "/apps/$app/config/routing.yml", "/@AppBundle/", "@$bundleName");
+
+        // modify config.yml
+        $this->replaceInFiles($this->projectDir . "/apps/$app/config/config.yml", "/\\/var\\//", "/../var/");
 
         // modify config yml
         $this->replaceLines($this->projectDir . "/apps/$app/config/config.yml", 1, 1, [

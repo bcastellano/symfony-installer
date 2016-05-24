@@ -1,8 +1,8 @@
-Symfony Installer
-=================
+Symfony Installer: Multiple application support
+===============================================
 
-**This is the official installer to start new projects based on the Symfony
-full-stack framework.**
+**This is a fork of official Symfony installer to start new projects based on the Symfony
+full-stack framework and adding capability to create multiple application installation.**
 
 Installing the installer
 ------------------------
@@ -41,23 +41,27 @@ system.
 
 Using the installer
 -------------------
+This installer add `new:multi-app` command to create projects in the same way of `new` command 
+(for single app installation). This multiple app command should be used like new command with same 
+features but adding support for multiple apps in one project. It ask interactively for application 
+names and other information.
 
 **1. Start a new project with the latest stable Symfony version**
 
-Execute the `new` command and provide the name of your project as the only
+Execute the `new` | `new:multi-app` command and provide the name of your project as the only
 argument:
 
 ```bash
 # Linux, Mac OS X
-$ symfony new my_project
+$ symfony new:multi-app my_project
 
 # Windows
-c:\> php symfony new my_project
+c:\> php symfony new:multi-app my_project
 ```
 
 **2. Start a new project with the latest Symfony LTS (Long Term Support) version**
 
-Execute the `new` command and provide the name of your project as the first
+Execute the `new` | `new:multi-app` command and provide the name of your project as the first
 argument and `lts` as the second argument. The installer will automatically
 select the most recent LTS (*Long Term Support*) version available:
 
@@ -71,7 +75,7 @@ c:\> php symfony new my_project lts
 
 **3. Start a new project based on a specific Symfony branch**
 
-Execute the `new` command and provide the name of your project as the first
+Execute the `new` | `new:multi-app` command and provide the name of your project as the first
 argument and the branch number as the second argument. The installer will
 automatically select the most recent version available for the given branch:
 
@@ -85,7 +89,7 @@ c:\> php symfony new my_project 2.8
 
 **4. Start a new project based on a specific Symfony version**
 
-Execute the `new` command and provide the name of your project as the first
+Execute the `new` | `new:multi-app` command and provide the name of your project as the first
 argument and the exact Symfony version as the second argument:
 
 ```bash
