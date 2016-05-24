@@ -435,7 +435,7 @@ class NewMultiAppCommand extends NewCommand
         $this->replaceInFiles($this->projectDir . "/apps/$app/config/routing.yml", "/@AppBundle/", "@$bundleName");
 
         // modify config.yml
-        $this->replaceInFiles($this->projectDir . "/apps/$app/config/config.yml", "/\\/var\\//", "/../var/");
+        $this->replaceInFiles($this->projectDir . "/apps/$app/config/config.yml", "/\\/var\\//", "/../var/$app/");
 
         // modify config yml
         $this->replaceLines($this->projectDir . "/apps/$app/config/config.yml", 1, 1, [
@@ -536,7 +536,7 @@ class NewMultiAppCommand extends NewCommand
                 $this->projectDir . "/web/$app/app_dev.php"
             ],
             ["/AppBundle/", "/AppKernel/", "/AppCache/", "/\\/app\\//", "/\\/var\\//"],
-            [$bundleName, $appKernel, $appCache, "/../apps/$app/", "/../var/$app/"]);
+            [$bundleName, $appKernel, $appCache, "/../apps/$app/", "/../var/"]);
 
         if ($this->isSymfony3()) {
             // insert require kernel file
@@ -565,7 +565,8 @@ class NewMultiAppCommand extends NewCommand
             $this->projectDir . "/var/cache",
             $this->projectDir . "/var/logs",
             $this->projectDir . "/var/sessions",
-            $this->projectDir . "/web_original"
+            $this->projectDir . "/web_original",
+            $this->projectDir . "/tests/AppBundle"
         ]);
     }
 
