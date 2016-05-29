@@ -83,6 +83,24 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
         $this->assertContains('Symfony version 2.7.5 - app/dev/debug', $output);
     }
 
+    public function testSymfony3MultiAppInstallation()
+    {
+        $versionToInstall = '3.0';
+
+        $projectDir = sprintf('%s/my_test_project', sys_get_temp_dir());
+        $this->fs->remove($projectDir);
+
+        $output = $this->runCommand(sprintf('php symfony.phar new:multi-app %s %s -n', ProcessUtils::escapeArgument($projectDir), $versionToInstall));
+        $this->assertContains('Downloading Symfony...', $output);
+        $this->assertRegExp('/.*Symfony 3\.0\.\d+ was successfully installed.*/', $output);
+
+        $output = $this->runCommand('php bin/app1 --version', $projectDir);
+        $this->assertRegExp('/Symfony version 3\.0\.\d+(-DEV)? - app1\/dev\/debug/', $output);
+
+        $output = $this->runCommand('php bin/app2 --version', $projectDir);
+        $this->assertRegExp('/Symfony version 3\.0\.\d+(-DEV)? - app2\/dev\/debug/', $output);
+    }
+
     /**
      * Runs the given string as a command and returns the resulting output.
      * The CWD is set to the root project directory to simplify command paths.

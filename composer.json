@@ -1,12 +1,13 @@
 {
-    "name": "symfony/symfony-installer",
-    "description": "The official installer to create projects based on the Symfony full-stack framework.",
-    "keywords": ["symfony", "framework", "installer", "php"],
+    "name": "bcastellano/symfony-installer",
+    "description": "Symfony installer to create regular projects and multiple application projects.",
+    "keywords": ["symfony", "framework", "installer", "php", "multiple application"],
     "license": "MIT",
     "authors": [
         {
-            "name": "Symfony Community",
-            "homepage": "http://symfony.com/contributors"
+            "name": "Blas Castellano Moreno",
+            "email": "b.castellano.moreno@gmail.com",
+            "homepage": "http://bcastellano.es"
         }
     ],
     "autoload": {
