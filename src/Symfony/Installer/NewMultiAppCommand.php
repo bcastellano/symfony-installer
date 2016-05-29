@@ -192,17 +192,26 @@ class NewMultiAppCommand extends NewCommand
         $commands = [];
 
         foreach ($this->apps as $app) {
+            $console = $this->isSymfony3() ? "bin/$app" : "apps/$app/console";
+
             // add param for each app
             $contents['extra']['incenteev-parameters'][] = ['file' => "apps/$app/config/parameters.yml"];
 
-            $commands[] = "php bin/$app cache:clear --ansi";
-            $commands[] = "php bin/$app assets:install web/$app --ansi";
+            $commands[] = "php $console cache:clear --ansi";
+            $commands[] = "php $console assets:install web/$app --ansi";
+        }
+
+        if ($this->isSymfony3()) {
+            $buildBootstrap = "php vendor/sensio/distribution-bundle/Resources/bin/build_bootstrap.php var apps/$app";
+        } else {
+            // TODO add if set --use-new-directory-structure
+            $buildBootstrap = "php vendor/sensio/distribution-bundle/Sensio/Bundle/DistributionBundle/Resources/bin/build_bootstrap.php apps/$app";
         }
 
         // create command list for composer events
         $commands = array_merge([
             "Incenteev\\ParameterHandler\\ScriptHandler::buildParameters",
-            "php vendor/sensio/distribution-bundle/Resources/bin/build_bootstrap.php var apps/$app --use-new-directory-structure"
+            $buildBootstrap
         ], $commands);
 
         // and command list to composer events
@@ -254,7 +263,7 @@ class NewMultiAppCommand extends NewCommand
      *
      * @param string $file File to insert in
      * @param string $line Line to find
-     * @param int $position Position to insert lines. -1 before, 0 same line (and replace) or 1 to insert after
+     * @param int $position Position to insert lines. -1 before, 0 same line or 1 to insert after
      * @param array $newLines
      */
     private function insertLinesIn($file, $line, $position, array $newLines)
@@ -262,20 +271,15 @@ class NewMultiAppCommand extends NewCommand
         $contents = explode("\n", file_get_contents($file));
         foreach ($contents as  $pos=>$l) {
             if ($l == $line) {
-
-                $length = 0;
-                $insertPos = $pos;
-                if ($position == 0) {
-                    $length = 1;
-                }
-                elseif ($position < 0) {
+                $insertPos = $pos+1;
+                if ($position < 0) {
                     $insertPos--;
                 }
                 else {
                     $insertPos++;
                 }
 
-                array_splice($contents, $insertPos, $length, $newLines);
+                array_splice($contents, $insertPos, 0, $newLines);
 
                 break;
             }
@@ -393,6 +397,7 @@ class NewMultiAppCommand extends NewCommand
         $appKernel = ucfirst($app) . "Kernel";
         $appCache = ucfirst($app) . "Cache";
         $bundleName = ucfirst($app)."Bundle";
+        $coreBundleName = ucfirst($this->coreBundleName) . "Bundle";
 
         // rename kernel files
         $this->fs->rename(
@@ -415,7 +420,8 @@ class NewMultiAppCommand extends NewCommand
                 ["/\\/var\\//"],
                 ["/../var/$app/"]);
         } else {
-            $this->replaceLines($this->projectDir . "/apps/$app/$appKernel.php", -2, 0, [
+            // TODO if new-structure
+            /*$this->replaceLines($this->projectDir . "/apps/$app/$appKernel.php", -2, 0, [
                 '    public function getCacheDir()',
                 '    {',
                 '        return $this->getRootDir()."/../../var/'.$app.'/cache/".$this->environment;',
@@ -425,8 +431,16 @@ class NewMultiAppCommand extends NewCommand
                 '    {',
                 '        return $this->getRootDir()."/../../var/'.$app.'/logs";',
                 '    }',
-            ]);
+            ]);*/
         }
+
+        // add core bundle
+        $this->insertLinesIn(
+            $this->projectDir . "/apps/$app/$appKernel.php",
+            "            new $bundleName\\$bundleName(),",
+            -1,
+            ["            new $coreBundleName\\$coreBundleName(),"]
+        );
 
         // modify autoload.php
         $this->replaceInFiles($this->projectDir . "/apps/$app/autoload.php", "/\\.\\.\\/vendor/", "../../vendor");
@@ -490,9 +504,13 @@ class NewMultiAppCommand extends NewCommand
 
             // insert require kernel file
             $this->insertLinesIn($this->projectDir . "/bin/$app", "\$kernel = new $appKernel(\$env, \$debug);", -1, [
-                "",
-                "require_once __DIR__.'/../apps/$app/$appKernel.php';"
+                "require_once __DIR__.'/../apps/$app/$appKernel.php';",
+                ""
             ]);
+        } else {
+            $appKernel = ucfirst($app) . "Kernel";
+
+            $this->replaceInFiles([$this->projectDir . "/apps/$app/console"], "/AppKernel/", $appKernel);
         }
     }
 
@@ -541,14 +559,14 @@ class NewMultiAppCommand extends NewCommand
         if ($this->isSymfony3()) {
             // insert require kernel file
             $this->insertLinesIn($this->projectDir . "/web/$app/app.php", "\$kernel = new $appKernel('prod', false);", -1, [
-                "",
-                "require_once __DIR__.'/../../apps/$app/$appKernel.php';"
+                "require_once __DIR__.'/../../apps/$app/$appKernel.php';",
+                ""
             ]);
 
             // insert require kernel file
             $this->insertLinesIn($this->projectDir . "/web/$app/app_dev.php", "\$kernel = new $appKernel('dev', true);", -1, [
-                "",
-                "require_once __DIR__.'/../../apps/$app/$appKernel.php';"
+                "require_once __DIR__.'/../../apps/$app/$appKernel.php';",
+                ""
             ]);
         }
     }
@@ -623,7 +641,7 @@ class NewMultiAppCommand extends NewCommand
             ));
         }
 
-        $console = ($this->isSymfony3() ? "bin/$app" : "$appDir/console");
+        $console = ($this->isSymfony3() ? "bin/{app_name}" : "$appDir/console");
 
         $this->output->writeln(sprintf(
             "    * Configure your application in <comment>$appDir/config/parameters.yml</comment> file.\n\n".
