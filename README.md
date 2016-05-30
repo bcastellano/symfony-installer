@@ -1,6 +1,8 @@
 Symfony Installer: Multiple application support
 ===============================================
 
+[![Build Status](https://travis-ci.org/bcastellano/symfony-installer.svg?branch=master)](https://travis-ci.org/bcastellano/symfony-installer) [![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
+
 **This is a fork of official Symfony installer to start new projects based on the Symfony
 full-stack framework and adding capability to create multiple application installation.**
 

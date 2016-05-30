@@ -26,6 +26,11 @@ class NewMultiAppCommand extends NewCommand
      */
     protected $coreBundleName;
 
+    /**
+     * @var boolean
+     */
+    protected $newDirectoryStructure;
+
     protected function configure()
     {
         $this
@@ -35,6 +40,7 @@ class NewMultiAppCommand extends NewCommand
             ->addArgument('version', InputArgument::OPTIONAL, 'The Symfony version to be installed (defaults to the latest stable version).', 'latest')
 
             ->addOption('apps', 'a', InputOption::VALUE_REQUIRED, 'Number of applications', 2)
+            ->addOption('use-new-directory-structure', 'd', InputOption::VALUE_NONE, 'Set new directory structure for project. Only Symfony2 projects.')
         ;
     }
 
@@ -63,6 +69,9 @@ class NewMultiAppCommand extends NewCommand
         // set core bundle name
         $this->coreBundleName = trim($question->ask($input, $output, new Question('<question>Enter the name of the main shared bundle</question> (CoreBundle):', 'CoreBundle')));
         $this->coreBundleName = str_replace('bundle', '', strtolower($this->coreBundleName));
+
+        // set new directory structure is required
+        $this->newDirectoryStructure = $input->getOption('use-new-directory-structure') ? : false;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -104,6 +113,16 @@ class NewMultiAppCommand extends NewCommand
             $this->cleanUp();
             throw $e;
         }
+    }
+
+    private function isSymfony28()
+    {
+        return preg_match('/2\.8.*/', $this->version) == 1;
+    }
+
+    private function hasNewStructure()
+    {
+        return $this->isSymfony3() || $this->newDirectoryStructure;
     }
 
     /**
@@ -189,10 +208,24 @@ class NewMultiAppCommand extends NewCommand
         ];
 
         // create command list for composer events
-        $commands = [];
+        $commands = [
+            "Incenteev\\ParameterHandler\\ScriptHandler::buildParameters"
+        ];
+
+        if ($this->isSymfony3()) {
+            $commands[] = "php vendor/sensio/distribution-bundle/Resources/bin/build_bootstrap.php var apps/".current($this->apps);
+        } else {
+            foreach ($this->apps as $app) {
+                if ($this->fs->exists($this->projectDir . '/vendor/sensio/distribution-bundle/Sensio/Bundle/DistributionBundle/Resources/bin/build_bootstrap.php')) {
+                    $commands[] = "php vendor/sensio/distribution-bundle/Sensio/Bundle/DistributionBundle/Resources/bin/build_bootstrap.php apps/$app";
+                } else {
+                    $commands[] = "php vendor/sensio/distribution-bundle/Resources/bin/build_bootstrap.php apps/$app apps/$app";
+                }
+            }
+        }
 
         foreach ($this->apps as $app) {
-            $console = $this->isSymfony3() ? "bin/$app" : "apps/$app/console";
+            $console = $this->hasNewStructure() ? "bin/$app" : "apps/$app/console";
 
             // add param for each app
             $contents['extra']['incenteev-parameters'][] = ['file' => "apps/$app/config/parameters.yml"];
@@ -200,19 +233,6 @@ class NewMultiAppCommand extends NewCommand
             $commands[] = "php $console cache:clear --ansi";
             $commands[] = "php $console assets:install web/$app --ansi";
         }
-
-        if ($this->isSymfony3()) {
-            $buildBootstrap = "php vendor/sensio/distribution-bundle/Resources/bin/build_bootstrap.php var apps/$app";
-        } else {
-            // TODO add if set --use-new-directory-structure
-            $buildBootstrap = "php vendor/sensio/distribution-bundle/Sensio/Bundle/DistributionBundle/Resources/bin/build_bootstrap.php apps/$app";
-        }
-
-        // create command list for composer events
-        $commands = array_merge([
-            "Incenteev\\ParameterHandler\\ScriptHandler::buildParameters",
-            $buildBootstrap
-        ], $commands);
 
         // and command list to composer events
         $contents['scripts']['post-install-cmd'] = $commands;
@@ -420,18 +440,20 @@ class NewMultiAppCommand extends NewCommand
                 ["/\\/var\\//"],
                 ["/../var/$app/"]);
         } else {
-            // TODO if new-structure
-            /*$this->replaceLines($this->projectDir . "/apps/$app/$appKernel.php", -2, 0, [
-                '    public function getCacheDir()',
-                '    {',
-                '        return $this->getRootDir()."/../../var/'.$app.'/cache/".$this->environment;',
-                '    }',
-                '',
-                '    public function getLogDir()',
-                '    {',
-                '        return $this->getRootDir()."/../../var/'.$app.'/logs";',
-                '    }',
-            ]);*/
+            if ($this->hasNewStructure()) {
+                $this->replaceLines($this->projectDir . "/apps/$app/$appKernel.php", -2, 0, [
+                    '',
+                    '    public function getCacheDir()',
+                    '    {',
+                    '        return $this->getRootDir()."/../../var/' . $app . '/cache/".$this->environment;',
+                    '    }',
+                    '',
+                    '    public function getLogDir()',
+                    '    {',
+                    '        return $this->getRootDir()."/../../var/' . $app . '/logs";',
+                    '    }',
+                ]);
+            }
         }
 
         // add core bundle
@@ -511,6 +533,26 @@ class NewMultiAppCommand extends NewCommand
             $appKernel = ucfirst($app) . "Kernel";
 
             $this->replaceInFiles([$this->projectDir . "/apps/$app/console"], "/AppKernel/", $appKernel);
+
+            if ($this->isSymfony28()) {
+                // insert require kernel file
+                $this->insertLinesIn($this->projectDir . "/apps/$app/console", "\$kernel = new $appKernel(\$env, \$debug);", -1, [
+                    "require_once __DIR__.'/$appKernel.php';",
+                    ""
+                ]);
+            }
+
+            if ($this->hasNewStructure()) {
+                $this->fs->rename(
+                    $this->projectDir . "/apps/$app/console",
+                    $this->projectDir . "/bin/$app");
+
+                $this->replaceInFiles([
+                        $this->projectDir . "/bin/$app"
+                    ],
+                    ["/bootstrap\\.php\\.cache/", "/$appKernel\\.php/", "/autoload.php/"],
+                    ["../apps/$app/bootstrap.php.cache", "../apps/$app/$appKernel.php", "../apps/$app/autoload.php"]);
+            }
         }
     }
 
@@ -531,6 +573,15 @@ class NewMultiAppCommand extends NewCommand
             $this->fs->mirror(
                 $this->projectDir . "/var/sessions",
                 $this->projectDir . "/var/$app/sessions");
+        } else {
+            if ($this->hasNewStructure()) {
+                $this->fs->mirror(
+                    $this->projectDir . "/apps/$app/cache",
+                    $this->projectDir . "/var/$app/cache");
+                $this->fs->mirror(
+                    $this->projectDir . "/apps/$app/logs",
+                    $this->projectDir . "/var/$app/logs");
+            }
         }
     }
 
@@ -556,7 +607,7 @@ class NewMultiAppCommand extends NewCommand
             ["/AppBundle/", "/AppKernel/", "/AppCache/", "/\\/app\\//", "/\\/var\\//"],
             [$bundleName, $appKernel, $appCache, "/../apps/$app/", "/../var/"]);
 
-        if ($this->isSymfony3()) {
+        if ($this->isSymfony3() || $this->isSymfony28()) {
             // insert require kernel file
             $this->insertLinesIn($this->projectDir . "/web/$app/app.php", "\$kernel = new $appKernel('prod', false);", -1, [
                 "require_once __DIR__.'/../../apps/$app/$appKernel.php';",
@@ -586,6 +637,15 @@ class NewMultiAppCommand extends NewCommand
             $this->projectDir . "/web_original",
             $this->projectDir . "/tests/AppBundle"
         ]);
+
+        if (!$this->isSymfony3() && $this->hasNewStructure()) {
+            foreach ($this->apps as $app) {
+                $this->fs->remove([
+                    $this->projectDir . "/apps/$app/cache",
+                    $this->projectDir . "/apps/$app/logs"
+                ]);
+            }
+        }
     }
 
     /**
@@ -641,7 +701,7 @@ class NewMultiAppCommand extends NewCommand
             ));
         }
 
-        $console = ($this->isSymfony3() ? "bin/{app_name}" : "$appDir/console");
+        $console = ($this->hasNewStructure() ? "bin/{app_name}" : "$appDir/console");
 
         $this->output->writeln(sprintf(
             "    * Configure your application in <comment>$appDir/config/parameters.yml</comment> file.\n\n".
