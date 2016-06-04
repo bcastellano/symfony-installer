@@ -103,6 +103,36 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
 
         $output = $this->runCommand('php bin/app2 --version', $projectDir);
         $this->assertRegExp('/Symfony version 3\.0\.\d+(-DEV)? - app2\/dev\/debug/', $output);
+
+        $output = $this->runServerRequest($projectDir.'/web/app1');
+        $this->assertRegExp('/Your application is now ready. You can start working on it at/', $output);
+
+        $output = $this->runServerRequest($projectDir.'/web/app2');
+        $this->assertRegExp('/Your application is now ready. You can start working on it at/', $output);
+    }
+
+    /**
+     * Run app in php built in server and return html for request
+     *
+     * @param string $docRoot
+     * @return null|string
+     */
+    private function runServerRequest($docRoot)
+    {
+        $process = new Process('php -S localhost:8000');
+        $process->setTimeout(0);
+        $process->setWorkingDirectory($docRoot);
+        $process->start();
+
+        $response = null;
+        $timeout = microtime(true) + 5;
+        while (!$response && (microtime(true) < $timeout)) {
+            $request = new Process('curl localhost:8000/app_dev.php');
+            $request->run();
+            $response = $request->getOutput();
+        }
+
+        return $response;
     }
 
     /**
