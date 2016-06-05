@@ -109,6 +109,58 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
 
         $output = $this->runServerRequest($projectDir.'/web/app2');
         $this->assertRegExp('/Your application is now ready. You can start working on it at/', $output);
+
+        $this->runCommand('composer install', $projectDir);
+    }
+
+    /**
+     * @dataProvider provideSymfony2MultiAppInstallationData
+     */
+    public function testSymfony2MultiAppInstallation($versionToInstall, $messageRegexp, $versionRegexp, $htmlRegexp)
+    {
+        $projectDir = sprintf('%s/my_test_project', sys_get_temp_dir());
+
+        // install with old structure
+        $this->fs->remove($projectDir);
+
+        $output = $this->runCommand(sprintf('php symfony.phar new:multi-app %s %s -n', ProcessUtils::escapeArgument($projectDir), $versionToInstall));
+        $this->assertContains('Downloading Symfony...', $output);
+        $this->assertRegExp($messageRegexp, $output);
+
+        $output = $this->runCommand('php apps/app1/console --version', $projectDir);
+        $this->assertRegExp($versionRegexp, $output);
+
+        $output = $this->runCommand('php apps/app2/console --version', $projectDir);
+        $this->assertRegExp($versionRegexp, $output);
+
+        $output = $this->runServerRequest($projectDir.'/web/app1');
+        $this->assertRegExp($htmlRegexp, $output);
+
+        $output = $this->runServerRequest($projectDir.'/web/app2');
+        $this->assertRegExp($htmlRegexp, $output);
+
+        $this->runCommand('composer install', $projectDir);
+
+        // install with new structure
+        $this->fs->remove($projectDir);
+
+        $output = $this->runCommand(sprintf('php symfony.phar new:multi-app %s %s -n -d', ProcessUtils::escapeArgument($projectDir), $versionToInstall));
+        $this->assertContains('Downloading Symfony...', $output);
+        $this->assertRegExp($messageRegexp, $output);
+
+        $output = $this->runCommand('php bin/app1 --version', $projectDir);
+        $this->assertRegExp($versionRegexp, $output);
+
+        $output = $this->runCommand('php bin/app2 --version', $projectDir);
+        $this->assertRegExp($versionRegexp, $output);
+
+        $output = $this->runServerRequest($projectDir.'/web/app1');
+        $this->assertRegExp($htmlRegexp, $output);
+
+        $output = $this->runServerRequest($projectDir.'/web/app2');
+        $this->assertRegExp($htmlRegexp, $output);
+
+        $this->runCommand('composer install', $projectDir);
     }
 
     /**
@@ -192,6 +244,34 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
                 '/.*Symfony dev\-master was successfully installed.*/',
                 '/Symfony version 3\.0\.0\-BETA1 - app\/dev\/debug/',
             ),
+        );
+    }
+
+    public function provideSymfony2MultiAppInstallationData()
+    {
+        return array(
+
+            array(
+                '2.8',
+                '/.*Symfony 2\.8\.\d+ was successfully installed.*/',
+                '/Symfony version 2\.8\.\d+(-DEV)? - app(1|2)\/dev\/debug/',
+                '/Your application is now ready. You can start working on it at/'
+            ),
+
+            array(
+                '2.3',
+                '/.*Symfony 2\.3\.\d+ was successfully installed.*/',
+                '/Symfony version 2\.3\.\d+ - app(1|2)\/dev\/debug/',
+                '/Your application is now ready. You can start working on it at/'
+            ),
+
+            array(
+                '2.7',
+                '/.*Symfony 2\.7\.\d+ was successfully installed.*/',
+                '/Symfony version 2\.7\.\d+ - app(1|2)\/dev\/debug/',
+                '/Your application is now ready. You can start working on it at/'
+            ),
+
         );
     }
 }
