@@ -18,14 +18,14 @@ require file_exists(__DIR__.'/vendor/autoload.php')
     ? __DIR__.'/vendor/autoload.php'
     : __DIR__.'/../../autoload.php';
 
-$appVersion = '1.5.2-DEV';
+$appVersion = '1.5.2';
 
 // Windows uses Path instead of PATH
 if (!isset($_SERVER['PATH']) && isset($_SERVER['Path'])) {
     $_SERVER['PATH'] = $_SERVER['Path'];
 }
 
-$app = new Symfony\Installer\Application('Symfony Installer', $appVersion);
+$app = new Symfony\Installer\Application('Symfony Installer (multiple application edition)', $appVersion);
 $app->add(new Symfony\Installer\AboutCommand($appVersion));
 $app->add(new Symfony\Installer\NewCommand());
 $app->add(new Symfony\Installer\DemoCommand());

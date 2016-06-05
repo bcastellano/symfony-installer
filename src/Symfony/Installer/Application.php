@@ -22,7 +22,7 @@ use Symfony\Component\Console\Application as ConsoleApplication;
  */
 class Application extends ConsoleApplication
 {
-    const VERSIONS_URL = 'https://get.symfony.com/symfony.version';
+    const VERSIONS_URL = 'https://github.com/bcastellano/symfony-installer/releases/download/latest/symfony.version';
 
     public function doRun(InputInterface $input, OutputInterface $output)
     {

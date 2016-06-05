@@ -72,7 +72,7 @@ class SelfUpdateCommand extends DownloadCommand
         $this->output = $output;
 
         $this->latestInstallerVersion = $this->getUrlContents(Application::VERSIONS_URL);
-        $this->remoteInstallerFile = 'http://symfony.com/installer';
+        $this->remoteInstallerFile = $this->getRemoteFileUrl();
         $this->currentInstallerFile = realpath($_SERVER['argv'][0]) ?: $_SERVER['argv'][0];
         $this->tempDir = sys_get_temp_dir();
         $this->currentInstallerBackupFile = basename($this->currentInstallerFile, '.phar').'-backup.phar';
@@ -192,11 +192,11 @@ class SelfUpdateCommand extends DownloadCommand
 
     protected function getDownloadedApplicationType()
     {
-        return 'Symfony Installer';
+        return 'Symfony Installer Multiple Application Edition';
     }
 
     protected function getRemoteFileUrl()
     {
-        return 'http://symfony.com/installer';
+        return 'https://github.com/bcastellano/symfony-installer/releases/download/latest/symfony.phar';
     }
 }

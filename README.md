@@ -14,14 +14,14 @@ This step is only needed the first time you use the installer:
 ### Linux and Mac OS X
 
 ```bash
-$ sudo curl -LsS https://symfony.com/installer -o /usr/local/bin/symfony
+$ sudo curl -LsS https://github.com/bcastellano/symfony-installer/releases/download/latest/symfony.phar -o /usr/local/bin/symfony
 $ sudo chmod a+x /usr/local/bin/symfony
 ```
 
 ### Windows
 
 ```bash
-c:\> php -r "file_put_contents('symfony', file_get_contents('https://symfony.com/installer'));"
+c:\> php -r "file_put_contents('symfony', file_get_contents('https://github.com/bcastellano/symfony-installer/releases/download/latest/symfony.phar'));"
 ```
 
 Move the downloaded `symfony` file to your projects directory and execute

@@ -35,7 +35,7 @@ class AboutCommand extends Command
     {
         $this
             ->setName('about')
-            ->setDescription('Symfony Installer Help.')
+            ->setDescription('Symfony Installer Multiple Application Edition Help.')
         ;
     }
 
@@ -43,28 +43,32 @@ class AboutCommand extends Command
     {
         $commandHelp = <<<COMMAND_HELP
 
- Symfony Installer (%s)
+ <info>Symfony Installer Multiple Application edition</info> (%s)
  %s
 
- This is the official installer to start new projects based on the
- Symfony full-stack framework.
+ This is a fork of the official installer to start new projects based on the
+ Symfony full-stack framework with additional features to create symfony installations with multiple application support.
 
  To create a new project called <info>blog</info> in the current directory using
  the <info>latest stable version</info> of Symfony, execute the following command:
 
    <comment>%s new blog</comment>
+   <comment>%3\$s new:multi-app blog</comment> (for multiple app)
 
  Create a project based on the <info>Symfony Long Term Support version</info> (LTS):
 
    <comment>%3\$s new blog lts</comment>
+   <comment>%3\$s new:multi-app blog lts</comment> (for multiple app)
 
  Create a project based on a <info>specific Symfony branch</info>:
 
    <comment>%3\$s new blog 2.8</comment> or <comment>%3\$s new blog 3.0</comment>
+   <comment>%3\$s new:multi-app blog 2.8</comment> or <comment>%3\$s new:multi-app blog 3.0</comment> (for multiple app)
 
  Create a project based on a <info>specific Symfony version</info>:
 
    <comment>%3\$s new blog 2.8.1</comment> or <comment>%3\$s new blog 3.0.1</comment>
+   <comment>%3\$s new:multi-app blog 2.8.1</comment> or <comment>%3\$s new:multi-app blog 3.0.1</comment> (for multiple app)
 
  Create a <info>demo application</info> to learn how a Symfony application works:
 
@@ -91,7 +95,7 @@ COMMAND_UPDATE_HELP;
 
         $output->writeln(sprintf($commandHelp,
             $this->appVersion,
-            str_repeat('=', 20 + strlen($this->appVersion)),
+            str_repeat('=', 49 + strlen($this->appVersion)),
             $this->getExecutedCommand()
         ));
     }
