@@ -36,6 +36,16 @@ class NewMultiAppCommand extends NewCommand
         $this
             ->setName('new:multi-app')
             ->setDescription('Creates a new Symfony project with multiple application.')
+            ->setHelp(<<<HELP
+Examples of use:
+
+  Create last symfony version with multiple app: <info>symfony new:multi-app path/for/project</info>
+  Create symfony 2.8 version with multiple app: <info>symfony new:multi-app path/for/project 2.8</info>
+  Create symfony 2.x version with multiple app and new directory structure: <info>symfony new:multi-app --use-new-directory-structure path/for/project 2.3</info>
+  Create symfony installation with 3 apps: <info>symfony new:multi-app --apps 3 path/for/project 3.0</info>
+
+HELP
+            )
             ->addArgument('directory', InputArgument::REQUIRED, 'Directory where the new project will be created.')
             ->addArgument('version', InputArgument::OPTIONAL, 'The Symfony version to be installed (defaults to the latest stable version).', 'latest')
 
