@@ -213,7 +213,9 @@ class NewMultiAppCommand extends NewCommand
         ];
 
         if ($this->isSymfony3()) {
-            $commands[] = "php vendor/sensio/distribution-bundle/Resources/bin/build_bootstrap.php var apps/".current($this->apps);
+            reset($this->apps);
+            $app = current($this->apps);
+            $commands[] = "php vendor/sensio/distribution-bundle/Resources/bin/build_bootstrap.php var apps/$app";
         } else {
             foreach ($this->apps as $app) {
                 if ($this->fs->exists($this->projectDir . '/vendor/sensio/distribution-bundle/Sensio/Bundle/DistributionBundle/Resources/bin/build_bootstrap.php')) {
