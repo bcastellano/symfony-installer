@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Symfony-installer by bcastellano</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Symfony-installer</h1>
+      <h2 class="project-tagline">The Symfony Installer for multiple application</h2>
+      <a href="https://github.com/bcastellano/symfony-installer" class="btn">View on GitHub</a>
+      <a href="https://github.com/bcastellano/symfony-installer/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/bcastellano/symfony-installer/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="symfony-installer-multiple-application-support" class="anchor" href="#symfony-installer-multiple-application-support" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Symfony Installer: Multiple application support</h1>
+
+<p><a href="https://travis-ci.org/bcastellano/symfony-installer"><img src="https://travis-ci.org/bcastellano/symfony-installer.svg?branch=master" alt="Build Status"></a> <a href="http://doge.mit-license.org"><img src="http://img.shields.io/:license-mit-blue.svg" alt="License"></a></p>
+
+<p><strong>This is a fork of official Symfony installer to start new projects based on the Symfony
+full-stack framework and adding capability to create multiple application installation.</strong></p>
+
+<h2>
+<a id="installing-the-installer" class="anchor" href="#installing-the-installer" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installing the installer</h2>
+
+<p>This step is only needed the first time you use the installer:</p>
+
+<h3>
+<a id="linux-and-mac-os-x" class="anchor" href="#linux-and-mac-os-x" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Linux and Mac OS X</h3>
+
+<div class="highlight highlight-source-shell"><pre>$ sudo curl -LsS https://symfony.com/installer -o /usr/local/bin/symfony
+$ sudo chmod a+x /usr/local/bin/symfony</pre></div>
+
+<h3>
+<a id="windows" class="anchor" href="#windows" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Windows</h3>
+
+<div class="highlight highlight-source-shell"><pre>c:<span class="pl-cce">\&gt;</span> php -r <span class="pl-s"><span class="pl-pds">"</span>file_put_contents('symfony', file_get_contents('https://symfony.com/installer'));<span class="pl-pds">"</span></span></pre></div>
+
+<p>Move the downloaded <code>symfony</code> file to your projects directory and execute
+it as follows:</p>
+
+<div class="highlight highlight-source-shell"><pre>c:<span class="pl-cce">\&gt;</span> php symfony</pre></div>
+
+<p>If you prefer to create a global <code>symfony</code> command, execute the following:</p>
+
+<div class="highlight highlight-source-shell"><pre>c:<span class="pl-cce">\&gt;</span> (<span class="pl-c1">echo</span> @ECHO OFF <span class="pl-k">&amp;</span> <span class="pl-c1">echo</span> php <span class="pl-s"><span class="pl-pds">"</span>%~dp0symfony<span class="pl-pds">"</span></span> %<span class="pl-k">*</span>) <span class="pl-k">&gt;</span> symfony.bat</pre></div>
+
+<p>Then, move both files (<code>symfony</code> and <code>symfony.bat</code>) to any location included
+in your execution path. Now you can run the <code>symfony</code> command anywhere on your
+system.</p>
+
+<h2>
+<a id="using-the-installer" class="anchor" href="#using-the-installer" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Using the installer</h2>
+
+<p>This installer add <code>new:multi-app</code> command to create projects in the same way of <code>new</code> command 
+(for single app installation). This multiple app command should be used like new command with same 
+features but adding support for multiple apps in one project. It ask interactively for application 
+names and other information.</p>
+
+<p><strong>1. Start a new project with the latest stable Symfony version</strong></p>
+
+<p>Execute the <code>new</code> | <code>new:multi-app</code> command and provide the name of your project as the only
+argument:</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c"># Linux, Mac OS X</span>
+$ symfony new:multi-app my_project
+
+<span class="pl-c"># Windows</span>
+c:<span class="pl-cce">\&gt;</span> php symfony new:multi-app my_project</pre></div>
+
+<p><strong>2. Start a new project with the latest Symfony LTS (Long Term Support) version</strong></p>
+
+<p>Execute the <code>new</code> | <code>new:multi-app</code> command and provide the name of your project as the first
+argument and <code>lts</code> as the second argument. The installer will automatically
+select the most recent LTS (<em>Long Term Support</em>) version available:</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c"># Linux, Mac OS X</span>
+$ symfony new my_project lts
+
+<span class="pl-c"># Windows</span>
+c:<span class="pl-cce">\&gt;</span> php symfony new my_project lts</pre></div>
+
+<p><strong>3. Start a new project based on a specific Symfony branch</strong></p>
+
+<p>Execute the <code>new</code> | <code>new:multi-app</code> command and provide the name of your project as the first
+argument and the branch number as the second argument. The installer will
+automatically select the most recent version available for the given branch:</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c"># Linux, Mac OS X</span>
+$ symfony new my_project 2.8
+
+<span class="pl-c"># Windows</span>
+c:<span class="pl-cce">\&gt;</span> php symfony new my_project 2.8</pre></div>
+
+<p><strong>4. Start a new project based on a specific Symfony version</strong></p>
+
+<p>Execute the <code>new</code> | <code>new:multi-app</code> command and provide the name of your project as the first
+argument and the exact Symfony version as the second argument:</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c"># Linux, Mac OS X</span>
+$ symfony new my_project 2.8.1
+
+<span class="pl-c"># Windows</span>
+c:<span class="pl-cce">\&gt;</span> php symfony new my_project 2.8.1</pre></div>
+
+<p><strong>5. Install the Symfony demo application</strong></p>
+
+<p>The Symfony Demo is a reference application developed using the official Symfony
+Best Practices:</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c"># Linux, Mac OS X</span>
+$ symfony demo
+
+<span class="pl-c"># Windows</span>
+c:<span class="pl-cce">\&gt;</span> php symfony demo</pre></div>
+
+<h2>
+<a id="updating-the-installer" class="anchor" href="#updating-the-installer" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Updating the installer</h2>
+
+<p>New versions of the Symfony Installer are released regularly. To update your
+installer version, execute the following command:</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c"># Linux, Mac OS X</span>
+$ symfony self-update
+
+<span class="pl-c"># Windows</span>
+c:<span class="pl-cce">\&gt;</span> php symfony self-update</pre></div>
+
+<blockquote>
+<p><strong>NOTE</strong></p>
+
+<p>If your system requires the use of a proxy server to download contents, the
+installer tries to guess the best proxy settings from the <code>HTTP_PROXY</code> and
+<code>http_proxy</code> environment variables. Make sure any of them is set before
+executing the Symfony Installer.</p>
+</blockquote>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/bcastellano/symfony-installer">Symfony-installer</a> is maintained by <a href="https://github.com/bcastellano">bcastellano</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
